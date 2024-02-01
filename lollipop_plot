@@ -1,0 +1,57 @@
+#Create a lollipop plot to represent GSEA results
+#Portrays Term, p. value, false discovery rate, and enrichment score
+
+#Load required libraries
+library("biomaRt")
+library("org.Hs.eg.db")
+library("GO.db")
+library("GOstats")
+library("goProfiles")
+library("topGO")
+library("clusterProfiler")
+library("Rgraphviz")
+library("ggplot2")
+library("dplyr")
+library("stringr")
+library("forcats")
+library("ggthemes")
+library("RColorBrewer")
+library("ggpubr")
+library("ggtext")
+library("readr")
+library("GOplot")
+library("DESeq2")
+library("ComplexHeatmap")
+
+#############################################
+#Import data
+#############################################
+GSEA_Hallmark_new <- read.csv(data.csv)
+print(GSEA_Hallmark_new)
+
+#############################################
+#Plot results
+#############################################
+dGSEA_Hallmark <- ggplot(GSEA_Hallmark_new, aes(x = -log10(Pvalue) , y = fct_reorder(Term, (-log10(Pvalue))    )) ) +
+  geom_point(aes(size = (ES), color = FDR)) +            
+  geom_segment(aes( x=0, xend=-log10(Pvalue), y=Term, yend=Term, color= FDR), size = 1.0) +
+  theme_bw(base_size=8) +
+  scale_color_gradient2(low="white", mid="navy", high="firebrick3", midpoint=0.08) +
+  scale_size(range = c(3,8), name="Enrichment Score") +
+  ylab(NULL) +
+  geom_vline(xintercept=0, col="black") +
+  guides(shape = guide_legend(override.aes = list(size = 20))) +
+  labs(title = "Hallmark gene set"
+       
+       #Set cutoff value as defined previously
+       ,subtitle = "Nominal p.value cutoff < 0.05") +
+  theme(strip.text = element_text(face="bold", size=20),
+        strip.background = element_rect(fill="lightblue", colour="black",size=1)
+        ,axis.text.y = element_markdown() )
+
+tiff("dataset.tiff", units="in", width = 8, height = 5, res=300,  compression = 'none')
+dGSEA_Hallmark
+dev.off()
+
+dGSEA_Hallmark
+
