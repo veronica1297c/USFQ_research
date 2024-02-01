@@ -1,0 +1,79 @@
+#GENE EXPRESSION TRENDS
+
+#Load libraries
+library(ggplot2)
+
+#############################
+#
+#Prepare data
+#
+#############################
+
+# Read the CSV file into a data frame only as the counts
+gene_id <- read.csv("pathway.csv", header = TRUE)
+
+#Add +1 to all values so that they are all divisible
+gene_data2<-gene_id[,-1 ]
+gene_data2 <- gene_data2 + 1
+
+# Extract the first column (gene_id) and the remaining columns
+gene_id_column <- as.data.frame(gene_id[, 1])
+time_one <- gene_data2[, 1]
+expression_columns <- gene_data2
+
+# Divide each column by the values in the first column
+normalized_data <- expression_columns / time_one
+
+gene_data3<-as.data.frame(c(gene_id_column,normalized_data))
+
+#############################
+#
+#Calculate average
+#
+#############################
+
+# Calculate average for each column
+average_row <- colMeans(normalized_data)
+
+# Add the 'average' row to the data frame
+normalized_data <- rbind(normalized_data, average_row)
+
+#Label the last row as "average"
+new_value <- "average"
+df2<-gene_id_column
+column_name <- "gene_id[, 1]"
+df2[nrow(df2) + 1, column_name] <- new_value
+
+#merge normalize data with average with the names and the label "average"
+gene_data4 <-as.data.frame(c(df2,normalized_data))
+
+# Reshape data to long format
+gene_data_long <- reshape2::melt(gene_data4, id.vars = "gene_id...1.", variable.name = "Time", value.name = "Expression")
+
+gene_data_long$is_average <- ifelse(gene_data_long$gene_id == "average", "average", "other")
+
+# Convert "Expression" to numeric
+gene_data_long$Expression <- as.numeric(gene_data_long$Expression)
+
+
+#############################
+#
+#Plot graph
+#
+#############################
+
+plot_name<-"pathway"
+
+my_plot<-ggplot(gene_data_long, aes(x = Time, y = Expression, group = gene_id...1., color = is_average)) +
+  geom_line(aes(alpha = ifelse(is_average == "average", 2, 1))) +
+  scale_color_manual(values = c("other" = "navyblue", "average" = "navyblue")) +
+  ggtitle(plot_name) +
+  xlab("Time Points") +
+  ylab("log2(FC)") +
+  scale_y_continuous(trans = 'log2', breaks = c(1, 2, 4, 8, 16)) +
+  theme(legend.position = "none")
+
+my_plot
+
+ggsave("pathway.png", my_plot, width = 10, height = 6, dpi = 300)
+
