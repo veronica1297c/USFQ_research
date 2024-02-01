@@ -1,0 +1,126 @@
+#Parametric analysis
+
+# Install and load the required packages if not already installed
+install.packages("dplyr")
+install.packages("lmtest")
+
+#Load libraries
+library(dplyr)
+library(lmtest)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(car)
+library(tibble)
+
+##########################################
+#
+#ASSESS NORMALITY
+#
+##########################################
+
+# Example reading from a CSV file
+normal <- read.csv("pathway.csv", row.names = 1)
+
+# Create an empty vector to store the results
+shapiro_results <- numeric()
+
+# Loop through each column (excluding the last column)
+for (row in seq_len(nrow(normal))) {
+  # Extract values from the row and perform Shapiro-Wilk test
+  shapiro_test_result <- shapiro.test(as.numeric(normal[row, -ncol(normal)]))
+  
+  # Assign the p-value to the corresponding row in the results vector
+  shapiro_results[row] <- shapiro_test_result$p.value
+}
+
+# Add the results vector as a new column to your data frame
+normal$ShapiroPValue <- shapiro_results
+
+# Print the updated data frame
+print(normal)
+
+# Create a new data frame named 'shapiro' with the row names and the last column
+shapiro <- data.frame(Gene = row.names(normal), shapiro_test = normal[, ncol(normal)])
+
+# Print the 'shapiro' data frame
+print(shapiro)
+
+
+##########################################
+#
+#ASSESS INDEPENDENCE HOMOGENEITY OF VARIANCE
+#
+##########################################
+data <- read.csv("pathway.csv")
+
+# Reshape the data
+reshaped_data <- data %>%
+  gather(key = "Group", value = "Value", -Gene)
+
+# Print the reshaped data
+print(reshaped_data)
+write.csv(reshaped_data, file = "data.csv", row.names = TRUE)
+homoscedastic <- read.csv("data.csv")
+
+# Convert "Group" to a factor before performing Levene's test
+homoscedastic$Group <- factor(homoscedastic$Group)
+
+# Group by Gene and perform Levene's test within each group
+levene <- homoscedastic %>%
+  group_by(Gene) %>%
+  summarize(LevenePValue = leveneTest(Value ~ Group, data = .)$Pr[1])
+
+# Print the results
+print(levene)
+
+# Randomly sample 10 genes for visualization
+sampled_genes <- sample(unique(homoscedastic$Gene), 10)
+
+# Create a subset of the data for sampled genes
+subset_data <- homoscedastic %>% filter(Gene %in% sampled_genes)
+
+# Plot boxplots for the sampled genes
+ggplot(subset_data, aes(x = Group, y = Value, group = Group, fill = Group)) +
+  geom_boxplot() +
+  facet_wrap(~Gene, scales = "free") +
+  theme_minimal()
+
+
+##########################################
+#
+#ASSESS INDEPENDENCE OF TESTS
+#
+##########################################
+
+# Assuming columns: Gene, Group, Value
+
+# Create a function to apply the Breusch-Godfrey test to each gene
+apply_bgtest <- function(homoscedastic) {
+  bg_test_result <- bgtest(Value ~ Group, order = 1, data = homoscedastic)
+  return(data.frame(Gene = homoscedastic$Gene[1], p_value = bg_test_result$p.value))
+}
+
+# Apply the function to each gene group
+bgtest <- homoscedastic %>%
+  group_by(Gene) %>%
+  do(apply_bgtest(.))
+
+# Print the results
+print(bgtest)
+
+##########################################
+#
+#Compile results
+#
+##########################################
+
+# Assuming you have data frames bgtest_results, levene_results, and shapiro
+# Merge based on the "Gene" column
+merged_results <- merge(bgtesT, levene, by = "Gene")
+merged_results <- merge(merged_results, shapiro, by = "Gene")
+
+# Print the merged results
+print(merged_results)
+write.csv(merged_results, file = "pathway_analysis.csv", row.names = TRUE)
+
