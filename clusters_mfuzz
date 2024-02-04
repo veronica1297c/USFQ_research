@@ -1,0 +1,49 @@
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("Mfuzz")
+
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("Mfuzzgui")
+
+library("RColorBrewer")
+
+
+#################################
+#Use GUI or continue to use the code below
+#################################
+Mfuzzgui()
+
+#################################
+#Import and prepare data
+#################################
+
+ex <- read.csv("hallmark_co.csv", header = TRUE, row.names = 1, as.is = TRUE)
+ex.m <- as.matrix(ex)
+eset <- new('ExpressionSet', exprs = ex.m)
+
+#Exclude genes with more than 25% of the measurements missing. 
+data.r <- filter.NA(eset, thres = 0.25)
+
+#Missing values are not allowed and are replaced by mode
+#mode can be k-nearest neighbors "knn" or the average "mean".
+data.f <- fill.NA(data.r, mode = "knn")
+
+#OPTIONAL:Remove lowly expressed genes or those with small changes of expression
+#Caution: this filtering may cause the loss of biologically important genes
+tmp <- filter.std(data.f, min.std = 0)
+
+#gene expression is standardised to mean = 0 and std = 1
+#this step allows Euclidean space representation in the plot
+#Mfuzz assumes that data is fully pre processed including data normalization
+data.s <- standardise(data.f)
+
+#################################
+#Soft clustering
+#################################
+
+#CLuster and plot data
+cl <- mfuzz(data.s, centers = 9, m = 0.95)
+mfuzz.plot2(data.s, cl = cl, colo = "black" , mfrow = c(3,3), time.labels)
