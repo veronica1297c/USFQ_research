@@ -1,0 +1,67 @@
+#Create a Heatmap
+
+#Install packages needed
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("DESeq2",force = TRUE)
+BiocManager::install("ComplexHeatmap")
+BiocManager::install("org.Hs.eg.db",force = TRUE)
+
+#Load packages
+
+library(DESeq2)
+library(ggplot2)
+library(RColorBrewer)
+library(ComplexHeatmap)
+library(RColorBrewer)
+
+#######################################
+#Import data
+#######################################
+
+#Select the gene expression file to upload and define it as Counts
+
+counts<-read.delim("timeline.csv", header = TRUE, row.names = 1, sep = ",", dec = ".")
+
+
+#######################################
+#Prepare data
+#######################################
+
+#Normalize data using DESeq
+
+dds <- DESeqDataSetFromMatrix(countData = counts, colData=coldata, design=~condition)
+dds <- DESeq(Counts)
+write.csv(Counts, file = "deseq_results.csv")
+
+#Create a data frame and a matrix from the same data set
+df <- as.data.frame(counts)
+mat<-as.matrix(counts)
+
+#######################################
+#Create plots
+#######################################
+
+#Define the names of the samples and the color determined for each group here
+ha = HeatmapAnnotation(df = df)
+
+ha = HeatmapAnnotation(sample = c("time1", "time2", "time3", "time4", "time5"),                  
+  col = list(sample = c("time1" = "orchid3",
+                        "time2" =  "orchid3",
+                        "time3" =  "orchid3",
+                        "time4" =  "orchid3",
+                        "time5" =  "orchid3")))
+
+h<-Heatmap(mat, cluster_rows = F,
+           cluster_columns = F,
+           column_labels = "time1", "time2", "time3", "time4", "time5",
+           name = "FDR",
+           col = colorRampPalette(rev(brewer.pal(10, "RdYlBu")))(100)
+           #top_annotation = ha)
+print(h)
+
+#Define the name of the resulting figure here
+png('sarc_and_skin.png',res=250,width = 4000,height=3000)
+print(h)
