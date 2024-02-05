@@ -1,0 +1,63 @@
+library(ggplot2)
+library(dplyr)
+library(ggsignif)
+library(ggpubr)
+library(ggpubr)
+
+your_data <- read.table(text = "
+Group Value
+Pre 842.65
+Pre 878.08
+Pre 891.35
+Flight 825.5666667
+Flight 971.1333333
+Flight 849.5666667
+Flight 895.9333333
+Post 896
+Post 735.35
+Post 698.15
+Post 767.04
+", header = TRUE, sep = " ")
+
+summary_data <- your_data %>%
+  group_by(Group) %>%
+  summarize(mean = mean(Value), se = sd(Value) / sqrt(n()))
+
+# Perform t-test comparisons between all groups
+t_test_results <- pairwise.t.test(your_data$Value, your_data$Group,
+                                  paired = FALSE, 
+                                  p.adjust.method = "bonferroni")
+
+# Specify the order of the groups
+group_order <- c("Pre", "Flight", "Post")
+
+# Convert "Group" to factor with the specified order
+your_data$Group <- factor(your_data$Group, levels = group_order)
+summary_data$Group <- factor(summary_data$Group, levels = group_order)
+
+
+my_plot <- ggplot(your_data, aes(x = Group, y = Value, color = Group)) +
+        geom_bar(data = summary_data, aes(x = Group, y = mean, fill = Group),
+        stat = "identity", color = "black", width = 0.5, position = "dodge") +
+  scale_fill_manual(values = c("Pre" = "#679DAA", 
+                               "Flight" = "#617B84", 
+                               "Post" = "#DC6F6A")) +
+  geom_errorbar(data = summary_data, aes(x = Group, y = mean, 
+                                         ymin = mean - se, ymax = mean + se),
+                width = 0.25, position = position_dodge(0.5), color = "black") +
+  geom_point(position = "identity", size = 2, shape = 21, 
+             stroke = 1, fill ="white", color = "black") +
+  stat_compare_means(data = your_data, aes(x = Group, y = Value, group = NULL),
+                     method = "t.test", paired = FALSE,
+                     comparisons = list(c("Pre", "Flight"), 
+                                        c("Pre", "Post"), 
+                                        c("Flight", "Post")),
+                     label.y = c(1000, 1100, 1200), 
+                     text.format = c("p.signif", "p.adj"), 
+                     label = "p.format") +
+         ggtitle("ALDOA") +
+         xlab("Group") +
+         ylab("Value") +
+  theme_classic()
+
+my_plot
